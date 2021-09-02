@@ -177,5 +177,5 @@ def to_socket_addr(addr, addr_len):
     if addr_len == sizeof(sockaddr_in):
         return sockaddr_in.from_buffer(addr)
     if addr_len == sizeof(sockaddr_in6):
-        return sockaddr_in6(addr)
+        return sockaddr_in6.from_buffer(addr)
     return addr  # Unknown or malformed. Return the raw bytes.
