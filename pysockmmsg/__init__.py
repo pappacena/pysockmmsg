@@ -1,3 +1,3 @@
-from .base import recvmsg
+from .base import recvmsg, sendmsg
 
-__all__ = ["recvmsg"]
+__all__ = ["recvmsg", "sendmsg"]

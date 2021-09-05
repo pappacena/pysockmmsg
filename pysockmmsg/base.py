@@ -127,12 +127,12 @@ _recvmsg = libc.recvmsg
 _recvmsg.argtypes = [c_int, POINTER(struct_msghdr), c_int]
 _recvmsg.restype = c_int
 
-_sendmsg = libc.recvmsg
+_sendmsg = libc.sendmsg
 _sendmsg.argtypes = [c_int, POINTER(struct_msghdr), c_int]
-_recvmsg.restype = c_int
+_sendmsg.restype = c_int
 
 
-def recvmsg(socket, bufsize):
+def recvmsg(sock, bufsize):
     buf = create_string_buffer(bufsize)
     ctrl_bufsize = (
         sizeof(struct_cmsghdr) + sizeof(sock_extended_err) + sizeof(c_size_t)
@@ -155,12 +155,39 @@ def recvmsg(socket, bufsize):
     msghdr.msg_control = cast(ctrl_buf, c_void_p)
     msghdr.msg_controllen = ctrl_bufsize
     msghdr.msg_flags = 0
-    ret = _recvmsg(socket.fileno(), byref(msghdr), MSG_WAITFORONE)
+    ret = _recvmsg(sock.fileno(), byref(msghdr), MSG_WAITFORONE)
     raise_if_socket_error(ret)
     data = buf.raw[:ret]
 
     addr = to_socket_addr(addr, msghdr.msg_namelen)
     return data, addr
+
+
+def sendmsg(sock, to, data, flags=0):
+    # Convert the destination address into a struct sockaddr.
+    to = sockaddr_from_tupe(to)
+    msg_namelen = sizeof(to)
+    msg_name = cast(pointer(to), c_void_p)
+
+    if data:
+        databuf = create_string_buffer(data)
+        iov = struct_iovec(addressof(databuf), len(data))
+        msg_iov = pointer(iov)
+        msg_iovlen = 1
+    else:
+        msg_iov = 0
+        msg_iovlen = 0
+
+    msg_control = 0
+    msg_controllen = 0
+
+    msghdr = struct_msghdr(
+        msg_name, msg_namelen, msg_iov, msg_iovlen,
+        msg_control, msg_controllen, flags)
+
+    ret = _sendmsg(sock.fileno(), msghdr, 0)
+    raise_if_socket_error(ret)
+    return ret
 
 
 def raise_if_socket_error(ret: int) -> None:
@@ -179,3 +206,28 @@ def to_socket_addr(addr, addr_len):
     if addr_len == sizeof(sockaddr_in6):
         return sockaddr_in6.from_buffer(addr)
     return addr  # Unknown or malformed. Return the raw bytes.
+
+
+def sockaddr_from_tupe(addr):
+    """
+    Converts a socket address tuple (host, port) to a proper socketaddr_* 
+    C struct.
+
+    @param addr:
+    @return:
+    """
+    if ":" in addr[0]:
+        family = socket.AF_INET6
+        if len(addr) == 4:
+            addr, port, flowinfo, scope_id = addr
+        else:
+            (addr, port), flowinfo, scope_id = addr, 0, 0
+        addr = socket.inet_pton(family, addr)
+        return sockaddr_in6(
+            family, socket.ntohs(port), socket.ntohl(flowinfo),
+            addr, scope_id)
+    else:
+        family = socket.AF_INET
+        addr, port = addr
+        addr = cast(socket.inet_pton(family, addr), POINTER(c_byte * 4))
+        return sockaddr_in(family, socket.ntohs(port), addr.contents)
