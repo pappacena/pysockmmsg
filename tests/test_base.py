@@ -99,7 +99,6 @@ class TestSendMsg(TestCase):
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.addCleanup(sock.close)
-        # sock.sendto(b"a sent msg", (host, port))
         sendmsg(sock, (host, port), b"a sent msg")
 
         receiver.join()
@@ -107,3 +106,20 @@ class TestSendMsg(TestCase):
         msg, addr = receiver.received_data[0]
         self.assertEqual(b"a sent msg", msg)
         self.assertEqual(('127.0.0.1', mock.ANY), addr)
+
+    def test_send_ipv6(self):
+        port = 5555
+        host = "::1"
+        receiver = PktReceiver(host, port, ipv=6)
+        receiver.start()
+        self.addCleanup(receiver.join)
+
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+        self.addCleanup(sock.close)
+        sendmsg(sock, (host, port), b"a sent msg")
+
+        receiver.join()
+        self.assertEqual(1, len(receiver.received_data))
+        msg, addr = receiver.received_data[0]
+        self.assertEqual(b"a sent msg", msg)
+        self.assertEqual(('::1', mock.ANY, 0, 0), addr)

@@ -78,9 +78,9 @@ class sockaddr_in6(Structure):
     _fields_ = [
         ("sin6_family", c_byte),
         ("sin6_port", c_ushort),
-        ("sin6_flowinfo", c_byte * 4),
+        ("sin6_flowinfo", c_uint32),
         ("sin6_addr", c_byte * 16),
-        ("sin6_scope_id", c_byte * 4),
+        ("sin6_scope_id", c_uint32),
     ]
 
 
@@ -222,10 +222,11 @@ def sockaddr_from_tupe(addr):
             addr, port, flowinfo, scope_id = addr
         else:
             (addr, port), flowinfo, scope_id = addr, 0, 0
-        addr = socket.inet_pton(family, addr)
+        # addr = socket.inet_pton(family, addr)
+        addr = cast(socket.inet_pton(family, addr), POINTER(c_byte * 16))
         return sockaddr_in6(
             family, socket.ntohs(port), socket.ntohl(flowinfo),
-            addr, scope_id)
+            addr.contents, scope_id)
     else:
         family = socket.AF_INET
         addr, port = addr
