@@ -5,6 +5,7 @@ import socket
 from threading import Thread
 
 from pysockmmsg import recvmsg, sendmsg
+from pysockmmsg.base import sendmmsg
 
 
 class PktSender(Thread):
@@ -122,4 +123,56 @@ class TestSendMsg(TestCase):
         self.assertEqual(1, len(receiver.received_data))
         msg, addr = receiver.received_data[0]
         self.assertEqual(b"a sent msg", msg)
+        self.assertEqual(('::1', mock.ANY, 0, 0), addr)
+
+
+class TestSendMultipleMsgs(TestCase):
+    def test_send_ipv4(self):
+        host = "127.0.0.1"
+        port = 5555
+        receiver = PktReceiver(host, port)
+        receiver.start()
+        self.addCleanup(receiver.join)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addCleanup(sock.close)
+        sent = sendmmsg(sock, [
+            (b"a sent msg 1", (host, port)),
+            (b"a sent msg 2", (host, port))
+        ])
+
+        receiver.join()
+        self.assertEqual(2, sent)
+        self.assertEqual(2, len(receiver.received_data))
+        msg, addr = receiver.received_data[0]
+        self.assertEqual(b"a sent msg 1", msg)
+        self.assertEqual(('127.0.0.1', mock.ANY), addr)
+
+        msg, addr = receiver.received_data[1]
+        self.assertEqual(b"a sent msg 2", msg)
+        self.assertEqual(('127.0.0.1', mock.ANY), addr)
+
+    def test_send_ipv6(self):
+        host = "::1"
+        port = 5555
+        receiver = PktReceiver(host, port, ipv=6)
+        receiver.start()
+        self.addCleanup(receiver.join)
+
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+        self.addCleanup(sock.close)
+        sent = sendmmsg(sock, [
+            (b"a sent msg 1", (host, port)),
+            (b"a sent msg 2", (host, port))
+        ])
+
+        receiver.join()
+        self.assertEqual(2, sent)
+        self.assertEqual(2, len(receiver.received_data))
+        msg, addr = receiver.received_data[0]
+        self.assertEqual(b"a sent msg 1", msg)
+        self.assertEqual(('::1', mock.ANY, 0, 0), addr)
+
+        msg, addr = receiver.received_data[1]
+        self.assertEqual(b"a sent msg 2", msg)
         self.assertEqual(('::1', mock.ANY, 0, 0), addr)

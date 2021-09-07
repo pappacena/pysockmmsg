@@ -20,6 +20,7 @@ from ctypes import (
     pointer,
     sizeof,
 )
+from typing import List
 
 MSG_ERRQUEUE = 0x2000
 MSG_WAITALL = 0x100
@@ -44,6 +45,12 @@ class struct_msghdr(Structure):
         ("msg_flags", c_int),
     ]
 
+
+class struct_mmsghdr(Structure):
+    _fields_ = [
+        ("msg_hdr", struct_msghdr),
+        ("msg_len", c_uint)
+    ]
 
 class struct_cmsghdr(Structure):
     _fields_ = [
@@ -116,11 +123,6 @@ class sock_extended_err(Structure):
         ("ee_data", c_uint32),
     ]
 
-    def getdict(self):
-        return dict(
-            (field, getattr(self, field)) for field, _ in self._fields_
-        )
-
 
 libc = CDLL("libc.so.6")
 _recvmsg = libc.recvmsg
@@ -130,6 +132,10 @@ _recvmsg.restype = c_int
 _sendmsg = libc.sendmsg
 _sendmsg.argtypes = [c_int, POINTER(struct_msghdr), c_int]
 _sendmsg.restype = c_int
+
+_sendmmsg = libc.sendmmsg
+_sendmmsg.argtypes = [c_int, POINTER(struct_mmsghdr), c_uint, c_int]
+_sendmmsg.restype = c_int
 
 
 def recvmsg(sock, bufsize):
@@ -165,13 +171,39 @@ def recvmsg(sock, bufsize):
 
 def sendmsg(sock, to, data, flags=0):
     # Convert the destination address into a struct sockaddr.
-    to = sockaddr_from_tupe(to)
+    msghdr = _get_send_msghdr(data, to)
+
+    ret = _sendmsg(sock.fileno(), msghdr, 0)
+    raise_if_socket_error(ret)
+    return ret
+
+
+def sendmmsg(sock, data: List[tuple]):
+    """
+    Send multiple messages at once.
+
+    data should be a list of tuples in the format [(data, (host, port)), ...]
+    """
+    msghdr_len = len(data)
+    m_msghdr = (struct_mmsghdr * msghdr_len)()
+
+    for i, (content, destination) in enumerate(data):
+        msghdr = _get_send_msghdr(content, destination)
+        m_msghdr[i] = struct_mmsghdr(msghdr)
+
+    ret = _sendmmsg(sock.fileno(), m_msghdr[0], msghdr_len, 0)
+    raise_if_socket_error(ret)
+    return ret
+
+
+def _get_send_msghdr(data, destination, flags=0):
+    to = sockaddr_from_tupe(destination)
     msg_namelen = sizeof(to)
     msg_name = cast(pointer(to), c_void_p)
 
     if data:
         databuf = create_string_buffer(data)
-        iov = struct_iovec(addressof(databuf), len(data))
+        iov = struct_iovec(cast(databuf, c_void_p), len(data))
         msg_iov = pointer(iov)
         msg_iovlen = 1
     else:
@@ -181,13 +213,9 @@ def sendmsg(sock, to, data, flags=0):
     msg_control = 0
     msg_controllen = 0
 
-    msghdr = struct_msghdr(
+    return struct_msghdr(
         msg_name, msg_namelen, msg_iov, msg_iovlen,
         msg_control, msg_controllen, flags)
-
-    ret = _sendmsg(sock.fileno(), msghdr, 0)
-    raise_if_socket_error(ret)
-    return ret
 
 
 def raise_if_socket_error(ret: int) -> None:
