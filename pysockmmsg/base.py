@@ -22,6 +22,7 @@ from ctypes import (
 )
 from typing import List
 
+
 MSG_ERRQUEUE = 0x2000
 MSG_WAITALL = 0x100
 MSG_WAITFORONE = 0x10000
@@ -202,8 +203,7 @@ def _get_send_msghdr(data, destination, flags=0):
     msg_name = cast(pointer(to), c_void_p)
 
     if data:
-        databuf = create_string_buffer(data)
-        iov = struct_iovec(cast(databuf, c_void_p), len(data))
+        iov = struct_iovec(cast(data, c_void_p), len(data))
         msg_iov = pointer(iov)
         msg_iovlen = 1
     else:
@@ -250,7 +250,6 @@ def sockaddr_from_tupe(addr):
             addr, port, flowinfo, scope_id = addr
         else:
             (addr, port), flowinfo, scope_id = addr, 0, 0
-        # addr = socket.inet_pton(family, addr)
         addr = cast(socket.inet_pton(family, addr), POINTER(c_byte * 16))
         return sockaddr_in6(
             family, socket.ntohs(port), socket.ntohl(flowinfo),
