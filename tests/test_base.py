@@ -136,10 +136,9 @@ class TestSendMultipleMsgs(TestCase):
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.addCleanup(sock.close)
-        sent = sendmmsg(sock, [
-            (b"a sent msg 1", (host, port)),
-            (b"a sent msg 2", (host, port))
-        ])
+        sent = sendmmsg(sock, {
+            (host, port): [b"a sent msg 1", b"a sent msg 2"]
+        }, 2)
 
         receiver.join()
         self.assertEqual(2, sent)
@@ -161,10 +160,9 @@ class TestSendMultipleMsgs(TestCase):
 
         sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         self.addCleanup(sock.close)
-        sent = sendmmsg(sock, [
-            (b"a sent msg 1", (host, port)),
-            (b"a sent msg 2", (host, port))
-        ])
+        sent = sendmmsg(sock, {
+            (host, port): [b"a sent msg 1", b"a sent msg 2"]
+        }, 2)
 
         receiver.join()
         self.assertEqual(2, sent)

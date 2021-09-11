@@ -15,21 +15,22 @@ class TestSendMultipleMessages(TestCase):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.addCleanup(sock.close)
 
-        data_to_send = [
-            (b"a sent msg", (host, port))
-            for _ in range(total_packets)
-        ]
+        data_to_send = {
+            (host, port): [b"a sent msg" for _ in range(total_packets)]
+        }
 
         def send_using_sendmmsg():
-            sendmmsg(sock, data_to_send)
+            sendmmsg(sock, data_to_send, total_packets)
 
         def send_using_sendmsg():
-            for data, dest in data_to_send:
-                sendmsg(sock, dest, data)
+            for dest, packets in data_to_send.items():
+                for data in packets:
+                    sendmsg(sock, dest, data)
 
         def send_using_raw_python():
-            for data, dest in data_to_send:
-                sock.sendto(data, dest)
+            for dest, packets in data_to_send.items():
+                for data in packets:
+                    sock.sendto(data, dest)
 
         mmsg_time = timeit.timeit(send_using_sendmmsg, number=10)
         msg_time = timeit.timeit(send_using_sendmsg, number=10)

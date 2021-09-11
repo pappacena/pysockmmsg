@@ -20,8 +20,7 @@ from ctypes import (
     pointer,
     sizeof,
 )
-from typing import List
-
+from typing import List, Dict
 
 MSG_ERRQUEUE = 0x2000
 MSG_WAITALL = 0x100
@@ -179,18 +178,33 @@ def sendmsg(sock, to, data, flags=0):
     return ret
 
 
-def sendmmsg(sock, data: List[tuple]):
+def sendmmsg(sock, data: Dict[tuple, List], total_packets):
     """
     Send multiple messages at once.
 
     data should be a list of tuples in the format [(data, (host, port)), ...]
     """
-    msghdr_len = len(data)
+    msghdr_len = total_packets
     m_msghdr = (struct_mmsghdr * msghdr_len)()
 
-    for i, (content, destination) in enumerate(data):
-        msghdr = _get_send_msghdr(content, destination)
-        m_msghdr[i] = struct_mmsghdr(msghdr)
+    i = 0
+    for destination, packets in data.items():
+        to = sockaddr_from_tupe(destination)
+        msg_namelen = sizeof(to)
+        msg_name = cast(pointer(to), c_void_p)
+        msg_control = 0
+        msg_controllen = 0
+        msg_iovlen = 1
+        for pkt in packets:
+            iov = struct_iovec(cast(pkt, c_void_p), len(pkt))
+            msg_iov = pointer(iov)
+
+            msghdr = struct_msghdr(
+                msg_name, msg_namelen, msg_iov, msg_iovlen,
+                msg_control, msg_controllen, 0)
+
+            m_msghdr[i] = struct_mmsghdr(msghdr)
+            i += 1
 
     ret = _sendmmsg(sock.fileno(), m_msghdr[0], msghdr_len, 0)
     raise_if_socket_error(ret)
