@@ -2,6 +2,12 @@ Changelog
 =========
 
 
+0.0.2 (2021-09-12)
+------------------
+- Fixing relase. [pappacena]
+- Release: version 0.0.1 🚀 [pappacena]
+
+
 0.0.1 (2021-09-12)
 ------------------
 - Readme info. [pappacena]
