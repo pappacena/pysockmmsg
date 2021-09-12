@@ -2,8 +2,7 @@ import socket
 import timeit
 from unittest import TestCase
 
-from pysockmmsg import sendmsg
-from pysockmmsg.base import sendmmsg
+from pysockmmsg import sendmsg, sendmmsg
 
 
 class TestSendMultipleMessages(TestCase):
