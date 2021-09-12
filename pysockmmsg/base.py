@@ -20,7 +20,7 @@ from ctypes import (
     pointer,
     sizeof,
 )
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 MSG_ERRQUEUE = 0x2000
 MSG_WAITALL = 0x100
@@ -169,20 +169,37 @@ def recvmsg(sock, bufsize):
     return data, addr
 
 
-def sendmsg(sock, to, data, flags=0):
+def sendmsg(sock: socket.socket, destination: Tuple,
+            data: bytes, flags: int = 0):
+    """Sends a single message using the given socket."""
     # Convert the destination address into a struct sockaddr.
-    msghdr = _get_send_msghdr(data, to)
+    to = sockaddr_from_tupe(destination)
+    msg_namelen = sizeof(to)
+    msg_name = cast(pointer(to), c_void_p)
+
+    iov = struct_iovec(cast(data, c_void_p), len(data))  # type: ignore
+    msg_iov = pointer(iov)
+    msg_iovlen = 1
+
+    msg_control = 0
+    msg_controllen = 0
+
+    msghdr = struct_msghdr(
+        msg_name, msg_namelen, msg_iov, msg_iovlen,
+        msg_control, msg_controllen, flags)
 
     ret = _sendmsg(sock.fileno(), msghdr, 0)
     raise_if_socket_error(ret)
     return ret
 
 
-def sendmmsg(sock, data: Dict[tuple, List], total_packets):
+def sendmmsg(sock: socket.socket, data: Dict[Tuple, List],
+             total_packets: int):
     """
     Send multiple messages at once.
 
-    data should be a list of tuples in the format [(data, (host, port)), ...]
+    data should be a list of tuples in the format [(data, (host, port)), ...].
+    total_packets should be provided for performance reason.
     """
     msghdr_len = total_packets
     m_msghdr = (struct_mmsghdr * msghdr_len)()
@@ -209,27 +226,6 @@ def sendmmsg(sock, data: Dict[tuple, List], total_packets):
     ret = _sendmmsg(sock.fileno(), m_msghdr[0], msghdr_len, 0)
     raise_if_socket_error(ret)
     return ret
-
-
-def _get_send_msghdr(data, destination, flags=0):
-    to = sockaddr_from_tupe(destination)
-    msg_namelen = sizeof(to)
-    msg_name = cast(pointer(to), c_void_p)
-
-    if data:
-        iov = struct_iovec(cast(data, c_void_p), len(data))
-        msg_iov = pointer(iov)
-        msg_iovlen = 1
-    else:
-        msg_iov = 0
-        msg_iovlen = 0
-
-    msg_control = 0
-    msg_controllen = 0
-
-    return struct_msghdr(
-        msg_name, msg_namelen, msg_iov, msg_iovlen,
-        msg_control, msg_controllen, flags)
 
 
 def raise_if_socket_error(ret: int) -> None:
