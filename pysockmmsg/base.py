@@ -198,8 +198,13 @@ def sendmmsg(sock: socket.socket, data: Dict[Tuple, List],
     """
     Send multiple messages at once.
 
-    data should be a list of tuples in the format [(data, (host, port)), ...].
-    total_packets should be provided for performance reason.
+    data should be a dict in the format:
+        {
+            (host, port): [bytes, bytes, bytes, ...],
+            (host, port): [bytes, bytes, bytes, ...]
+        }
+    total_packets should be the total amount itens in the list of
+    bytes above, and should be provided for performance reason.
     """
     msghdr_len = total_packets
     m_msghdr = (struct_mmsghdr * msghdr_len)()
