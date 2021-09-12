@@ -100,19 +100,6 @@ class sockaddr_storage(Structure):
 
 
 class sock_extended_err(Structure):
-    """
-    {
-        uint32_t ee_errno;   /* error number */
-        uint8_t  ee_origin;  /* where the error originated */
-        uint8_t  ee_type;    /* type */
-        uint8_t  ee_code;    /* code */
-        uint8_t  ee_pad;     /* padding */
-        uint32_t ee_info;    /* additional information */
-        uint32_t ee_data;    /* other data */
-        /* More data may follow */
-    };
-    """
-
     _fields_ = [
         ("ee_errno", c_uint32),
         ("ee_origin", c_uint8),
@@ -209,14 +196,15 @@ def sendmmsg(sock: socket.socket, data: Dict[Tuple, List],
     msghdr_len = total_packets
     m_msghdr = (struct_mmsghdr * msghdr_len)()
 
+    msg_control = 0
+    msg_controllen = 0
+    msg_iovlen = 1
+
     i = 0
     for destination, packets in data.items():
         to = sockaddr_from_tupe(destination)
         msg_namelen = sizeof(to)
         msg_name = cast(pointer(to), c_void_p)
-        msg_control = 0
-        msg_controllen = 0
-        msg_iovlen = 1
         for pkt in packets:
             iov = struct_iovec(cast(pkt, c_void_p), len(pkt))
             msg_iov = pointer(iov)
