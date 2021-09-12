@@ -2,12 +2,21 @@ Changelog
 =========
 
 
-0.1.2 (2021-08-14)
+0.0.1 (2021-09-12)
 ------------------
-- Fix release, README and windows CI. [Bruno Rocha]
-- Release: version 0.1.0. [Bruno Rocha]
+- Readme info. [pappacena]
+- Fixing import. [pappacena]
+- Better documentation on packet sending. [pappacena]
+- Improving a bit performance. [pappacena]
+- Avoiding bytes copy. [pappacena]
+- Adding sendmmsg method. [pappacena]
+- Sendmsg for ipv6 tests. [pappacena]
+- Initial sendmsg impl. [pappacena]
+- Adding IPv6 test. [pappacena]
+- Cleaning up template leftovers. [pappacena]
+- Disabling tests on windows and macos. [pappacena]
+- Mapping structures and initial tests. [pappacena]
+- ✅ Ready to clone and code. [pappacena]
+- Initial commit. [Thiago F Pappacena]
 
 
-0.1.0 (2021-08-14)
-------------------
-- Add release command. [Bruno Rocha]
