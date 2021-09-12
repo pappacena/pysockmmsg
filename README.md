@@ -5,6 +5,10 @@
 
 Python wrappers for Linux's `sendmmsg` and `recvmmsg` system calls.
 
+When sending/receiving a large amount of packets, preparing the data to be 
+send/received using only a single system call can improve a lot the overal 
+performance by reducing kernel/userland context switching.
+
 ## Install it from PyPI
 
 ```bash
@@ -13,18 +17,19 @@ pip install pysockmmsg
 
 ## Usage
 
+### Sending multiple messages at a time
 ```py
-from pysockmmsg import BaseClass
-from pysockmmsg import base_function
+import socket
+from pysockmmsg import sendmmsg
 
-BaseClass().base_method()
-base_function()
-```
+data_to_send = {
+    ('10.10.1.20', '5555'): [b"msg1", b"msg2", b"msg3"],
+    ('10.10.1.25', '5555'): [b"msg4", b"msg5"],
+    ('10.10.1.26', '5555'): [b"msg6", b"msg7", b"msg8", b"msg9"],
+}
 
-```bash
-$ python -m pysockmmsg
-#or
-$ pysockmmsg
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sendmmsg(sock, data_to_send, total_packets=9)
 ```
 
 ## Development
